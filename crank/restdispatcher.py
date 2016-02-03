@@ -34,7 +34,7 @@ class RestDispatcher(ObjectDispatcher):
                 return self._dispatch_controller(current_path, current_controller, state, remainder[1:])
 
         method = self._find_first_exposed(current_controller, [http_method])
-        if method and self.method_matches_args(method, state.params, remainder, self._use_lax_params):
+        if method and self._method_matches_args(method, state.params, remainder, self._use_lax_params):
             state.add_method(method, remainder)
             return state
 
@@ -44,7 +44,7 @@ class RestDispatcher(ObjectDispatcher):
         current_controller = state.controller
         method = self._find_first_exposed(current_controller, ('post_delete', 'delete'))
 
-        if method and self.method_matches_args(method, state.params, remainder, self._use_lax_params):
+        if method and self._method_matches_args(method, state.params, remainder, self._use_lax_params):
             state.add_method(method, remainder)
             return state
 
@@ -105,7 +105,7 @@ class RestDispatcher(ObjectDispatcher):
         if self._is_exposed(current_controller, method_name):
             method = getattr(current_controller, method_name)
             new_remainder = remainder[:-1]
-            if method and self.method_matches_args(method, state.params, new_remainder, self._use_lax_params):
+            if method and self._method_matches_args(method, state.params, new_remainder, self._use_lax_params):
                 state.add_method(method, new_remainder)
                 return state
 
@@ -118,7 +118,7 @@ class RestDispatcher(ObjectDispatcher):
         get_method = self._find_first_exposed(current_controller, ('get_%s' % method_name, method_name))
         if get_method:
             new_remainder = remainder[:-1]
-            if self.method_matches_args(get_method, state.params, new_remainder, self._use_lax_params):
+            if self._method_matches_args(get_method, state.params, new_remainder, self._use_lax_params):
                 state.add_method(get_method, new_remainder)
                 return state
 
@@ -128,7 +128,7 @@ class RestDispatcher(ObjectDispatcher):
         http_method = state.request.method
         method = self._find_first_exposed(current_controller, ('%s_%s' %(http_method, method_name), method_name, 'post_%s' %method_name))
 
-        if method and self.method_matches_args(method, state.params, remainder, self._use_lax_params):
+        if method and self._method_matches_args(method, state.params, remainder, self._use_lax_params):
             state.add_method(method, remainder)
             return state
 
@@ -154,7 +154,7 @@ class RestDispatcher(ObjectDispatcher):
                 return state
             if self._is_exposed(current_controller, 'get_one'):
                 method = current_controller.get_one
-                if method and self.method_matches_args(method, state.params, remainder, self._use_lax_params):
+                if method and self._method_matches_args(method, state.params, remainder, self._use_lax_params):
                     state.add_method(method, remainder)
                     return state
             return self._dispatch_first_found_default_or_lookup(state, remainder)
@@ -179,7 +179,7 @@ class RestDispatcher(ObjectDispatcher):
             return self._dispatch_controller(current_path, current_controller, state, remainder[1:])
 
         method = self._find_first_exposed(current_controller, ('get_one', 'get'))
-        if method and self.method_matches_args(method, state.params, remainder, self._use_lax_params):
+        if method and self._method_matches_args(method, state.params, remainder, self._use_lax_params):
             state.add_method(method, remainder)
             return state
 

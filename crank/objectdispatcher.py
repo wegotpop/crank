@@ -120,7 +120,7 @@ class ObjectDispatcher(Dispatcher):
                 current_controller = state.controller
                 method = getattr(current_controller, 'index', None)
                 if method:
-                    if self.method_matches_args(method, state.params, remainder, self._use_lax_params):
+                    if self._method_matches_args(method, state.params, remainder, self._use_lax_params):
                         state.add_method(current_controller.index, remainder)
                         return state
             raise HTTPNotFound
@@ -162,7 +162,7 @@ class ObjectDispatcher(Dispatcher):
         #we are plumb out of path, check for index
         if not remainder:
             if self._is_exposed(current_controller, 'index') and \
-               self.method_matches_args(current_controller.index, state.params, remainder, self._use_lax_params):
+               self._method_matches_args(current_controller.index, state.params, remainder, self._use_lax_params):
                 state.add_method(current_controller.index, remainder)
                 return state
             #if there is no index, head up the tree
@@ -177,7 +177,7 @@ class ObjectDispatcher(Dispatcher):
         if self._is_exposed(current_controller, current_path):
             #check to see if the argspec jives
             controller = getattr(current_controller, current_path)
-            if self.method_matches_args(controller, state.params, current_args, self._use_lax_params):
+            if self._method_matches_args(controller, state.params, current_args, self._use_lax_params):
                 state.add_method(controller, current_args)
                 return state
 
@@ -201,20 +201,20 @@ class ObjectDispatcher(Dispatcher):
         if hasattr(current_controller, '_default') and self._is_exposed(current_controller, '_default'):
             state._notfound_stack.append(('default', current_controller._default, remainder, None))
 
-    def method_required_vars(self, method, params, argvars, argvals):
+    def _method_required_vars(self, method, params, argvars, argvals):
         required_vars = argvars
         if argvals:
             required_vars = argvars[:-len(argvals)]
         return required_vars
 
-    def method_matches_args(self, method, params, remainder, lax_params=False):
+    def _method_matches_args(self, method, params, remainder, lax_params=False):
         """
         This method matches the params from the request along with the remainder to the
         method's function signiture.  If the two jive, it returns true.
         """
         argvars, ovar_args, argkws, argvals = get_argspec(method)
 
-        required_vars = self.method_required_vars(method, params, argvars, argvals)
+        required_vars = self._method_required_vars(method, params, argvars, argvals)
 
         params = params.copy()
 

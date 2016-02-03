@@ -308,46 +308,46 @@ def mock_f3(self, a, b, c=None, d=50):
 def test_method_matches_args_no_remainder():
     params = {'a':1, 'b':2, 'c':3}
     remainder = []
-    r = ObjectDispatcher().method_matches_args(mock_f, params, remainder)
+    r = ObjectDispatcher()._method_matches_args(mock_f, params, remainder)
     assert r
 
 
 def test_method_matches_args_no_lax_params():
     params = {'a':1, 'b':2, 'c':3, 'x':4}
     remainder = []
-    r = ObjectDispatcher().method_matches_args(mock_f2, params, remainder, False)
+    r = ObjectDispatcher()._method_matches_args(mock_f2, params, remainder, False)
     assert not(r)
 
 
 def test_method_matches_args_fails_no_remainder():
     params = {'a':1, 'x':3}
     remainder = []
-    r = ObjectDispatcher().method_matches_args(mock_f, params, remainder)
+    r = ObjectDispatcher()._method_matches_args(mock_f, params, remainder)
     assert not(r)
 
 
 def test_method_matches_args_no_params():
     params = {}
     remainder = [1, 2]
-    r = ObjectDispatcher().method_matches_args(mock_f, params, remainder)
+    r = ObjectDispatcher()._method_matches_args(mock_f, params, remainder)
     assert r
 
 
 def test_method_matches_args_fails_no_params():
     params = {}
     remainder = [2]
-    r = ObjectDispatcher().method_matches_args(mock_f, params, remainder)
+    r = ObjectDispatcher()._method_matches_args(mock_f, params, remainder)
     assert not(r)
 
 
 def test_method_matches_args_fails_more_remainder_than_argspec():
     params = {}
     remainder = [2, 3, 4, 5]
-    r = ObjectDispatcher().method_matches_args(mock_f2, params, remainder)
+    r = ObjectDispatcher()._method_matches_args(mock_f2, params, remainder)
 
 
 def test_method_matches_args_with_default_values():
     params = {'a':1, 'b':2, 'c':3, 'd':4}
     remainder = []
-    r = ObjectDispatcher().method_matches_args(mock_f3, params, remainder)
+    r = ObjectDispatcher()._method_matches_args(mock_f3, params, remainder)
     assert r
