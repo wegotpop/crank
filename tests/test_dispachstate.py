@@ -16,6 +16,8 @@ class TestDispatchState:
 
     def test_create(self):
         assert self.state.params == {'a':1, 'b':2}, self.state.params
+        assert self.state.root_dispatcher == self.dispatcher
+        assert self.state.routing_args == {}
 
     def test_create_params_in_request(self):
         state = DispatchState(self.request, self.dispatcher)
@@ -69,12 +71,12 @@ class TestDispatchState:
     def test_init_with_extension(self):
         r = MockRequest()
         r.path_info = 'something.json'
-        state = DispatchState(r)
+        state = DispatchState(r, dispatcher=None)
         assert state.extension == 'json'
         
     def test_init_with_string_path(self):
         r = MockRequest()
         r.path_info = 'something.json'
-        state = DispatchState(r, path_info='s1/s2')
+        state = DispatchState(r, dispatcher=None, path_info='s1/s2')
         assert state.path == ['s1', 's2']
 

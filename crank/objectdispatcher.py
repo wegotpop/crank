@@ -21,6 +21,7 @@ from crank.dispatcher import Dispatcher
 from webob.exc import HTTPNotFound
 from inspect import ismethod
 
+
 class ObjectDispatcher(Dispatcher):
     """
     Object dispatch (also "object publishing") means that each portion of the
@@ -77,9 +78,6 @@ class ObjectDispatcher(Dispatcher):
         """
         return ismethod(getattr(controller, name, False))
 
-    def __call__(self, state, remainder=None):
-        return self._dispatch(state, remainder)
-
     def _perform_security_check(self, controller):
         #xxx do this better
         obj = getattr(controller, 'im_self', controller)
@@ -102,7 +100,6 @@ class ObjectDispatcher(Dispatcher):
         dispatcher = getattr(controller, '_dispatch', None)
         if dispatcher is not None:
             state.add_controller(current_path, controller)
-            state.dispatcher = controller
             return dispatcher(state, remainder)
         state.add_controller(current_path, controller)
         return self._dispatch(state, remainder)
@@ -121,7 +118,7 @@ class ObjectDispatcher(Dispatcher):
                 method = getattr(current_controller, 'index', None)
                 if method:
                     if self._method_matches_args(method, state.params, remainder, self._use_lax_params):
-                        state.add_method(current_controller.index, remainder)
+                        state.set_action(current_controller.index, remainder)
                         return state
             raise HTTPNotFound
         else:
@@ -135,8 +132,7 @@ class ObjectDispatcher(Dispatcher):
                 r = dispatcher(state, new_remainder)
                 return r
             elif m_type == 'default':
-                state.add_method(meth, m_remainder)
-                state.dispatcher = self
+                state.set_action(meth, m_remainder)
                 return state
 #        raise HTTPNotFound
 
@@ -145,12 +141,6 @@ class ObjectDispatcher(Dispatcher):
         This method defines how the object dispatch mechanism works, including
         checking for security along the way.
         """
-        if state.dispatcher is None:
-            state.dispatcher = self
-            state.add_controller('/', self)
-        if remainder is None:
-            remainder = state.path
-
         current_controller = state.controller
 
         #skip any empty urls
@@ -163,14 +153,14 @@ class ObjectDispatcher(Dispatcher):
         if not remainder:
             if self._is_exposed(current_controller, 'index') and \
                self._method_matches_args(current_controller.index, state.params, remainder, self._use_lax_params):
-                state.add_method(current_controller.index, remainder)
+                state.set_action(current_controller.index, remainder)
                 return state
             #if there is no index, head up the tree
             #to see if there is a default or lookup method we can use
             return self._dispatch_first_found_default_or_lookup(state, remainder)
 
 
-        current_path = state.path_translator(remainder[0])
+        current_path = state.translate_path_piece(remainder[0])
         current_args = remainder[1:]
 
         #an exposed method matching the path is found
@@ -178,7 +168,7 @@ class ObjectDispatcher(Dispatcher):
             #check to see if the argspec jives
             controller = getattr(current_controller, current_path)
             if self._method_matches_args(controller, state.params, current_args, self._use_lax_params):
-                state.add_method(controller, current_args)
+                state.set_action(controller, current_args)
                 return state
 
         #another controller is found
@@ -214,7 +204,9 @@ class ObjectDispatcher(Dispatcher):
         """
         argvars, ovar_args, argkws, argvals = get_argspec(method)
 
-        required_vars = self._method_required_vars(method, params, argvars, argvals)
+        required_vars = argvars
+        if argvals:
+            required_vars = argvars[:-len(argvals)]
 
         params = params.copy()
 
@@ -235,7 +227,7 @@ class ObjectDispatcher(Dispatcher):
                 # can evaluate properly
                 del params[var]
             else:
-                break;
+                break
 
         #remove params that have a default value
         vars_with_default = argvars[len(argvars)-len(argvals):]

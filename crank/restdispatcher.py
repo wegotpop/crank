@@ -26,7 +26,7 @@ class RestDispatcher(ObjectDispatcher):
         if remainder:
             current_path = remainder[0]
             if self._is_exposed(current_controller, current_path):
-                state.add_method(getattr(current_controller, current_path), remainder[1:])
+                state.set_action(getattr(current_controller, current_path), remainder[1:])
                 return state
 
             if self._is_controller(current_controller, current_path):
@@ -35,7 +35,7 @@ class RestDispatcher(ObjectDispatcher):
 
         method = self._find_first_exposed(current_controller, [http_method])
         if method and self._method_matches_args(method, state.params, remainder, self._use_lax_params):
-            state.add_method(method, remainder)
+            state.set_action(method, remainder)
             return state
 
         return self._dispatch_first_found_default_or_lookup(state, remainder)
@@ -45,7 +45,7 @@ class RestDispatcher(ObjectDispatcher):
         method = self._find_first_exposed(current_controller, ('post_delete', 'delete'))
 
         if method and self._method_matches_args(method, state.params, remainder, self._use_lax_params):
-            state.add_method(method, remainder)
+            state.set_action(method, remainder)
             return state
 
         #you may not send a delete request to a non-delete function
@@ -57,8 +57,6 @@ class RestDispatcher(ObjectDispatcher):
             sub_controller = getattr(current_controller, remainder[0], None)
             if sub_controller:
                 remainder = remainder[1:]
-                state.current_controller = sub_controller
-                state.path = remainder
                 r = self._dispatch_controller(remainder[0], sub_controller, state, remainder)
                 if r:
                     return r
@@ -79,13 +77,13 @@ class RestDispatcher(ObjectDispatcher):
         fixed_arg_length = len(fixed_args)
         if var_args:
             for i, item in enumerate(remainder):
-                item = state.path_translator(item)
+                item = state.translate_path_piece(item)
                 if hasattr(current_controller, item) and self._is_controller(current_controller, item):
                     current_controller = getattr(current_controller, item)
                     state.add_routing_args(item, remainder[:i], fixed_args, var_args)
                     return self._dispatch_controller(item, current_controller, state, remainder[i+1:])
         elif fixed_arg_length< len(remainder) and hasattr(current_controller, remainder[fixed_arg_length]):
-            item = state.path_translator(remainder[fixed_arg_length])
+            item = state.translate_path_piece(remainder[fixed_arg_length])
             if hasattr(current_controller, item):
                 if self._is_controller(current_controller, item):
                     state.add_routing_args(item, remainder, fixed_args, var_args)
@@ -106,7 +104,7 @@ class RestDispatcher(ObjectDispatcher):
             method = getattr(current_controller, method_name)
             new_remainder = remainder[:-1]
             if method and self._method_matches_args(method, state.params, new_remainder, self._use_lax_params):
-                state.add_method(method, new_remainder)
+                state.set_action(method, new_remainder)
                 return state
 
     def _handle_custom_get(self, state, remainder):
@@ -119,7 +117,7 @@ class RestDispatcher(ObjectDispatcher):
         if get_method:
             new_remainder = remainder[:-1]
             if self._method_matches_args(get_method, state.params, new_remainder, self._use_lax_params):
-                state.add_method(get_method, new_remainder)
+                state.set_action(get_method, new_remainder)
                 return state
 
     def _handle_custom_method(self, method, state, remainder):
@@ -129,7 +127,7 @@ class RestDispatcher(ObjectDispatcher):
         method = self._find_first_exposed(current_controller, ('%s_%s' %(http_method, method_name), method_name, 'post_%s' %method_name))
 
         if method and self._method_matches_args(method, state.params, remainder, self._use_lax_params):
-            state.add_method(method, remainder)
+            state.set_action(method, remainder)
             return state
 
         # there might be a sub-controller with a custom method, let's go see
@@ -138,8 +136,6 @@ class RestDispatcher(ObjectDispatcher):
             if sub_controller:
                 current = remainder[0]
                 remainder = remainder[1:]
-                state.current_controller = sub_controller
-                state.path = remainder
                 r = self._dispatch_controller(current, sub_controller, state, remainder)
                 if r:
                     return r
@@ -150,12 +146,12 @@ class RestDispatcher(ObjectDispatcher):
         if not remainder:
             method = self._find_first_exposed(current_controller, ('get_all', 'get'))
             if method:
-                state.add_method(method, remainder)
+                state.set_action(method, remainder)
                 return state
             if self._is_exposed(current_controller, 'get_one'):
                 method = current_controller.get_one
                 if method and self._method_matches_args(method, state.params, remainder, self._use_lax_params):
-                    state.add_method(method, remainder)
+                    state.set_action(method, remainder)
                     return state
             return self._dispatch_first_found_default_or_lookup(state, remainder)
 
@@ -169,9 +165,9 @@ class RestDispatcher(ObjectDispatcher):
         if r is not None:
             return r
 
-        current_path = state.path_translator(remainder[0])
+        current_path = state.translate_path_piece(remainder[0])
         if self._is_exposed(current_controller, current_path):
-            state.add_method(getattr(current_controller, current_path), remainder[1:])
+            state.set_action(getattr(current_controller, current_path), remainder[1:])
             return state
 
         if self._is_controller(current_controller, current_path):
@@ -180,7 +176,7 @@ class RestDispatcher(ObjectDispatcher):
 
         method = self._find_first_exposed(current_controller, ('get_one', 'get'))
         if method and self._method_matches_args(method, state.params, remainder, self._use_lax_params):
-            state.add_method(method, remainder)
+            state.set_action(method, remainder)
             return state
 
         return self._dispatch_first_found_default_or_lookup(state, remainder)
@@ -206,12 +202,6 @@ class RestDispatcher(ObjectDispatcher):
         This method defines how the object dispatch mechanism works, including
         checking for security along the way.
         """
-        if state.dispatcher is None:
-            state.dispatcher = self
-            state.add_controller('/', self)
-        if remainder is None:
-            remainder = state.path
-
         self._enter_controller(state, remainder)
 
         #log.debug('Entering dispatch for remainder: %s in controller %s'%(remainder, self))
@@ -220,7 +210,7 @@ class RestDispatcher(ObjectDispatcher):
             params = state.params
 
             #conventional hack for handling methods which are not supported by most browsers
-            request_method = params.get('_method', None)
+            request_method = params.pop('_method', None)
             if request_method:
                 request_method = request_method.lower()
                 #make certain that DELETE and PUT requests are not sent with GET
@@ -229,7 +219,6 @@ class RestDispatcher(ObjectDispatcher):
                 if method == 'get' and request_method == 'delete':
                     raise HTTPMethodNotAllowed
                 method = request_method
-                del state.params['_method']
             state.http_method = method
 
         r = self._check_for_sub_controllers(state, remainder)
