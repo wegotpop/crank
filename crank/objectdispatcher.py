@@ -204,9 +204,7 @@ class ObjectDispatcher(Dispatcher):
         """
         argvars, ovar_args, argkws, argvals = get_argspec(method)
 
-        required_vars = argvars
-        if argvals:
-            required_vars = argvars[:-len(argvals)]
+        required_vars = self._method_required_vars(method, params, argvars, argvals)
 
         params = params.copy()
 
